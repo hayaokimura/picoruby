@@ -36,7 +36,17 @@ load "#{MRUBY_ROOT}/tasks/presym.rake"
 load "#{MRUBY_ROOT}/tasks/benchmark.rake"
 load "#{MRUBY_ROOT}/tasks/gitlab.rake"
 load "#{MRUBY_ROOT}/tasks/doc.rake"
+load "export.rb"
 
+task :runtime_gems do
+  export = Export.new do |conf|
+    conf.gembox 'peripheral_utils'
+  end
+  puts export.gems
+  # load gembox
+  # compile rb files to mrb binary
+  # copy gems
+end
 
 ##############################
 # generic build targets, rules
