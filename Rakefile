@@ -42,10 +42,38 @@ task :runtime_gems do
   export = Export.new do |conf|
     conf.gembox 'peripheral_utils'
   end
-  puts export.gems
-  # load gembox
-  # compile rb files to mrb binary
-  # copy gems
+
+  runtime_gems_dir = "#{MRUBY_ROOT}/runtime_gems"
+  FileUtils.mkdir_p(runtime_gems_dir)
+
+  export.gems.each do |gem|
+    puts "Processing gem: #{gem.name}"
+
+    # Get Ruby source files from mrblib directory
+    rb_files = Dir.glob("#{gem.dir}/mrblib/**/*.rb").sort
+
+    if rb_files.empty?
+      puts "  No Ruby files found in #{gem.name}, skipping..."
+      next
+    end
+
+    # Create gem-specific directory
+    gem_output_dir = "#{runtime_gems_dir}/#{gem.name}"
+    FileUtils.mkdir_p(gem_output_dir)
+
+    # Compile each Ruby file to mrb
+    rb_files.each do |rb_file|
+      relative_path = rb_file.sub("#{gem.dir}/mrblib/", "")
+      mrb_file = "#{gem_output_dir}/#{relative_path.sub(/\.rb$/, '.mrb')}"
+      mrb_dir = File.dirname(mrb_file)
+      FileUtils.mkdir_p(mrb_dir)
+
+      puts "  Compiling #{relative_path}..."
+      sh "#{picorbcfile} -o #{mrb_file} #{rb_file}"
+    end
+  end
+
+  puts "Runtime gems compiled to #{runtime_gems_dir}"
 end
 
 ##############################
