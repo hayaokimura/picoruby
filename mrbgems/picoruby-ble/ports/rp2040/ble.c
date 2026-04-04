@@ -4,6 +4,7 @@
 #include "../../include/ble.h"
 
 #include "btstack.h"
+#include "ble/le_device_db.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
 #include "pico/stdlib.h"
@@ -58,6 +59,9 @@ packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t 
         case SM_EVENT_JUST_WORKS_REQUEST:
           sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
           break;
+        case SM_EVENT_PAIRING_COMPLETE:
+          BLE_push_event(packet, size);
+          break;
         default:
           break;
       }
@@ -87,6 +91,7 @@ packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t 
         case GATT_EVENT_INDICATION:
         case GATT_EVENT_CHARACTERISTIC_DESCRIPTOR_QUERY_RESULT:
         case GATT_EVENT_LONG_CHARACTERISTIC_DESCRIPTOR_QUERY_RESULT:
+        case SM_EVENT_PAIRING_COMPLETE:
           BLE_push_event(packet, size);
           break;
         default:
@@ -246,5 +251,34 @@ uint8_t
 BLE_write_characteristic_descriptor_using_descriptor_handle(uint16_t conn_handle, uint16_t descriptor_handle, const uint8_t *data, uint16_t size)
 {
   return gatt_client_write_characteristic_descriptor_using_descriptor_handle(&packet_handler, conn_handle, descriptor_handle, size, (uint8_t *)data);
+}
+
+void
+BLE_sm_request_pairing(uint16_t conn_handle)
+{
+  sm_request_pairing(conn_handle);
+}
+
+int
+BLE_le_device_db_count(void)
+{
+  return le_device_db_count();
+}
+
+void
+BLE_le_device_db_remove(int index)
+{
+  le_device_db_remove(index);
+}
+
+void
+BLE_le_device_db_info(int index, uint8_t *addr_type, uint8_t *addr)
+{
+  int bd_addr_type;
+  bd_addr_t bd_addr;
+  sm_key_t irk;
+  le_device_db_info(index, &bd_addr_type, bd_addr, irk);
+  *addr_type = (uint8_t)bd_addr_type;
+  memcpy(addr, bd_addr, 6);
 }
 

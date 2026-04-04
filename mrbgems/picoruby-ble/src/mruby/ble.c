@@ -172,6 +172,44 @@ mrb_gap_local_bd_addr(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, (const char *)addr, 6);
 }
 
+static mrb_value
+mrb_sm_request_pairing(mrb_state *mrb, mrb_value self)
+{
+  mrb_int conn_handle;
+  mrb_get_args(mrb, "i", &conn_handle);
+  BLE_sm_request_pairing((uint16_t)conn_handle);
+  return mrb_nil_value();
+}
+
+static mrb_value
+mrb_le_device_db_count(mrb_state *mrb, mrb_value self)
+{
+  return mrb_fixnum_value(BLE_le_device_db_count());
+}
+
+static mrb_value
+mrb_le_device_db_remove(mrb_state *mrb, mrb_value self)
+{
+  mrb_int index;
+  mrb_get_args(mrb, "i", &index);
+  BLE_le_device_db_remove((int)index);
+  return mrb_nil_value();
+}
+
+static mrb_value
+mrb_le_device_db_info(mrb_state *mrb, mrb_value self)
+{
+  mrb_int index;
+  mrb_get_args(mrb, "i", &index);
+  uint8_t addr_type;
+  uint8_t addr[6];
+  BLE_le_device_db_info((int)index, &addr_type, addr);
+  mrb_value ary = mrb_ary_new_capa(mrb, 2);
+  mrb_ary_push(mrb, ary, mrb_fixnum_value(addr_type));
+  mrb_ary_push(mrb, ary, mrb_str_new(mrb, (const char *)addr, 6));
+  return ary;
+}
+
 void
 mrb_picoruby_ble_gem_init(mrb_state* mrb)
 {
@@ -184,6 +222,10 @@ mrb_picoruby_ble_gem_init(mrb_state* mrb)
   mrb_define_method_id(mrb, class_BLE, MRB_SYM(push_read_value), mrb_push_read_value, MRB_ARGS_REQ(2));
   mrb_define_method_id(mrb, class_BLE, MRB_SYM(pop_heartbeat), mrb_pop_heartbeat, MRB_ARGS_NONE());
   mrb_define_method_id(mrb, class_BLE, MRB_SYM(pop_packet), mrb_pop_packet, MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, class_BLE, MRB_SYM(sm_request_pairing),  mrb_sm_request_pairing,  MRB_ARGS_REQ(1));
+  mrb_define_method_id(mrb, class_BLE, MRB_SYM(le_device_db_count),  mrb_le_device_db_count,  MRB_ARGS_NONE());
+  mrb_define_method_id(mrb, class_BLE, MRB_SYM(le_device_db_remove), mrb_le_device_db_remove, MRB_ARGS_REQ(1));
+  mrb_define_method_id(mrb, class_BLE, MRB_SYM(le_device_db_info),   mrb_le_device_db_info,   MRB_ARGS_REQ(1));
 
   mrb_init_class_BLE_Peripheral(mrb, class_BLE);
   mrb_init_class_BLE_Broadcaster(mrb, class_BLE);

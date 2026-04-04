@@ -47,6 +47,10 @@ uint8_t BLE_read_value_of_characteristic_using_value_handle(uint16_t conn_handle
 uint8_t BLE_discover_characteristic_descriptors(uint16_t conn_handle, uint16_t value_handle, uint16_t end_handle);
 uint8_t BLE_write_value_of_characteristic_without_response(uint16_t conn_handle, uint16_t value_handle, const uint8_t *data, uint16_t size);
 uint8_t BLE_write_characteristic_descriptor_using_descriptor_handle(uint16_t conn_handle, uint16_t descriptor_handle, const uint8_t *data, uint16_t size);
+void BLE_sm_request_pairing(uint16_t conn_handle);
+int  BLE_le_device_db_count(void);
+void BLE_le_device_db_remove(int index);
+void BLE_le_device_db_info(int index, uint8_t *addr_type, uint8_t *addr);
 
 #ifdef __cplusplus
 }

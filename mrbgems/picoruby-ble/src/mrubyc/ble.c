@@ -173,6 +173,38 @@ c_gap_local_bd_addr(mrbc_vm *vm, mrbc_value *v, int argc)
   SET_RETURN(str);
 }
 
+static void
+c_sm_request_pairing(mrbc_vm *vm, mrbc_value *v, int argc)
+{
+  BLE_sm_request_pairing((uint16_t)GET_INT_ARG(1));
+}
+
+static void
+c_le_device_db_count(mrbc_vm *vm, mrbc_value *v, int argc)
+{
+  SET_INT_RETURN(BLE_le_device_db_count());
+}
+
+static void
+c_le_device_db_remove(mrbc_vm *vm, mrbc_value *v, int argc)
+{
+  BLE_le_device_db_remove((int)GET_INT_ARG(1));
+}
+
+static void
+c_le_device_db_info(mrbc_vm *vm, mrbc_value *v, int argc)
+{
+  uint8_t addr_type;
+  uint8_t addr[6];
+  BLE_le_device_db_info((int)GET_INT_ARG(1), &addr_type, addr);
+  mrbc_value ary = mrbc_array_new(vm, 2);
+  mrbc_value addr_type_val = mrbc_integer_value(addr_type);
+  mrbc_value addr_str = mrbc_string_new(vm, (const void *)addr, 6);
+  mrbc_array_push(&ary, &addr_type_val);
+  mrbc_array_push(&ary, &addr_str);
+  SET_RETURN(ary);
+}
+
 void
 mrbc_ble_init(mrbc_vm *vm)
 {
@@ -184,6 +216,10 @@ mrbc_ble_init(mrbc_vm *vm)
   mrbc_define_method(vm, class_BLE, "push_read_value", c_push_read_value);
   mrbc_define_method(vm, class_BLE, "pop_heartbeat", c_pop_heartbeat);
   mrbc_define_method(vm, class_BLE, "pop_packet", c_pop_packet);
+  mrbc_define_method(vm, class_BLE, "sm_request_pairing",  c_sm_request_pairing);
+  mrbc_define_method(vm, class_BLE, "le_device_db_count",  c_le_device_db_count);
+  mrbc_define_method(vm, class_BLE, "le_device_db_remove", c_le_device_db_remove);
+  mrbc_define_method(vm, class_BLE, "le_device_db_info",   c_le_device_db_info);
 
   mrbc_init_class_BLE_Peripheral(vm, class_BLE);
   mrbc_init_class_BLE_Broadcaster(vm, class_BLE);

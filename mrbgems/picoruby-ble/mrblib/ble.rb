@@ -75,6 +75,21 @@ class BLE
   CLIENT_CHARACTERISTIC_CONFIGURATION = 0x2902
   CHARACTERISTIC_DATABASE_HASH = 0x2b2a
 
+  # SM events (from BTstack btstack_event.h)
+  SM_EVENT_PAIRING_COMPLETE = 0xE0
+
+  # SM_EVENT_PAIRING_COMPLETE status codes
+  SM_ERROR_CODE_SUCCESS                    = 0x00
+  SM_ERROR_CODE_PASSKEY_ENTRY_FAILED       = 0x01
+  SM_ERROR_CODE_OOB_NOT_AVAILABLE          = 0x02
+  SM_ERROR_CODE_AUTHENTICATION_REQUIREMENTS = 0x03
+  SM_ERROR_CODE_CONFIRM_VALUE_FAILED       = 0x04
+  SM_ERROR_CODE_PAIRING_NOT_SUPPORTED      = 0x05
+  SM_ERROR_CODE_ENCRYPTION_KEY_SIZE        = 0x06
+  SM_ERROR_CODE_COMMAND_NOT_SUPPORTED      = 0x07
+  SM_ERROR_CODE_UNSPECIFIED_REASON         = 0x08
+  SM_ERROR_CODE_REPEATED_ATTEMPTS          = 0x09
+
   def initialize(role, profile_data = nil)
     @role = role
     @debug = false
@@ -146,6 +161,51 @@ class BLE
   def debug_puts(*args)
     # STDOUT.puts not to use BLE::UART#puts
     STDOUT.puts(*args) if @debug
+  end
+
+  # Register a block to be called when pairing completes.
+  # The block receives (conn_handle, status) where status == 0 means success.
+  def on_pairing_complete(&block)
+    @pairing_complete_callback = block
+  end
+
+  # Call from packet_callback when SM_EVENT_PAIRING_COMPLETE is received.
+  # packet layout: [event_type(1), len(1), conn_handle(2LE), status(1), reason(1)]
+  def handle_pairing_complete_event(event_packet)
+    conn_handle = Utils.little_endian_to_int16(event_packet.byteslice(2, 2))
+    status = event_packet.getbyte(4)
+    if status == SM_ERROR_CODE_SUCCESS
+      debug_puts "Pairing complete. conn_handle: #{sprintf("0x%04X", conn_handle)}"
+    else
+      debug_puts "Pairing failed. conn_handle: #{sprintf("0x%04X", conn_handle)}, status: #{status}"
+    end
+    @pairing_complete_callback&.call(conn_handle, status)
+  end
+
+  # Returns an array of bonded device info hashes: [{index:, addr_type:, addr:}, ...]
+  def bonded_devices
+    count = le_device_db_count
+    result = []
+    i = 0
+    while i < count
+      info = le_device_db_info(i)
+      result << { index: i, addr_type: info[0], addr: Utils.bd_addr_to_str(info[1]) }
+      i += 1
+    end
+    result
+  end
+
+  def delete_bond(index)
+    le_device_db_remove(index)
+  end
+
+  def delete_all_bonds
+    i = 0
+    count = le_device_db_count
+    while i < count
+      le_device_db_remove(i)
+      i += 1
+    end
   end
 
 end
