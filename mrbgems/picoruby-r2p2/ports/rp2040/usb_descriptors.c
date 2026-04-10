@@ -32,6 +32,8 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 
+extern volatile bool r2p2_usb_hid_enabled;
+
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
  *
@@ -158,6 +160,16 @@ enum
 #endif
 
 #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + CFG_TUD_HID * TUD_HID_DESC_LEN)
+#define CONFIG_TOTAL_LEN_NH (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
+
+// CDC-only interface numbers (no HID)
+enum {
+  ITF_NUM_CDC_0_NH = 0,
+  ITF_NUM_CDC_0_DATA_NH,
+  ITF_NUM_CDC_1_NH,
+  ITF_NUM_CDC_1_DATA_NH,
+  ITF_NUM_TOTAL_NH
+};
 
 // HID Report Descriptor for Keyboard
 uint8_t const desc_hid_keyboard_report[] =
@@ -211,6 +223,19 @@ uint8_t const desc_fs_configuration[] =
   TUD_HID_DESCRIPTOR(ITF_NUM_HID_CONSUMER, 8, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_consumer_report), EPNUM_HID_CONSUMER, CFG_TUD_HID_EP_BUFSIZE, 10),
 };
 
+// CDC-only full speed configuration (no HID)
+uint8_t const desc_fs_configuration_nh[] =
+{
+  // Config number, interface count, string index, total length, attribute, power in mA
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL_NH, 0, CONFIG_TOTAL_LEN_NH, 0x00, 100),
+
+  // 1st CDC
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0_NH, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
+
+  // 2nd CDC
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1_NH, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+};
+
 #if TUD_OPT_HIGH_SPEED
 // Per USB specs: high speed capable device must report device_qualifier and other_speed_configuration
 
@@ -236,8 +261,22 @@ uint8_t const desc_hs_configuration[] =
   TUD_HID_DESCRIPTOR(ITF_NUM_HID_CONSUMER, 8, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_consumer_report), EPNUM_HID_CONSUMER, CFG_TUD_HID_EP_BUFSIZE, 10),
 };
 
+// CDC-only high speed configuration (no HID)
+uint8_t const desc_hs_configuration_nh[] =
+{
+  // Config number, interface count, string index, total length, attribute, power in mA
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL_NH, 0, CONFIG_TOTAL_LEN_NH, 0x00, 100),
+
+  // 1st CDC
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0_NH, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
+
+  // 2nd CDC
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1_NH, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
+};
+
 // other speed configuration
 uint8_t desc_other_speed_config[CONFIG_TOTAL_LEN];
+uint8_t desc_other_speed_config_nh[CONFIG_TOTAL_LEN_NH];
 
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
 tusb_desc_device_qualifier_t const desc_device_qualifier =
@@ -273,13 +312,19 @@ uint8_t const* tud_descriptor_other_speed_configuration_cb(uint8_t index)
 
   // if link speed is high return fullspeed config, and vice versa
   // Note: the descriptor type is OHER_SPEED_CONFIG instead of CONFIG
-  memcpy(desc_other_speed_config,
-         (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_fs_configuration : desc_hs_configuration,
-         CONFIG_TOTAL_LEN);
-
-  desc_other_speed_config[1] = TUSB_DESC_OTHER_SPEED_CONFIG;
-
-  return desc_other_speed_config;
+  if (r2p2_usb_hid_enabled) {
+    memcpy(desc_other_speed_config,
+           (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_fs_configuration : desc_hs_configuration,
+           CONFIG_TOTAL_LEN);
+    desc_other_speed_config[1] = TUSB_DESC_OTHER_SPEED_CONFIG;
+    return desc_other_speed_config;
+  } else {
+    memcpy(desc_other_speed_config_nh,
+           (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_fs_configuration_nh : desc_hs_configuration_nh,
+           CONFIG_TOTAL_LEN_NH);
+    desc_other_speed_config_nh[1] = TUSB_DESC_OTHER_SPEED_CONFIG;
+    return desc_other_speed_config_nh;
+  }
 }
 
 #endif // highspeed
@@ -292,12 +337,19 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 {
   (void) index; // for multiple configurations
 
+  if (r2p2_usb_hid_enabled) {
 #if TUD_OPT_HIGH_SPEED
-  // Although we are highspeed, host may be fullspeed.
-  return (tud_speed_get() == TUSB_SPEED_HIGH) ?  desc_hs_configuration : desc_fs_configuration;
+    return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_hs_configuration : desc_fs_configuration;
 #else
-  return desc_fs_configuration;
+    return desc_fs_configuration;
 #endif
+  } else {
+#if TUD_OPT_HIGH_SPEED
+    return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_hs_configuration_nh : desc_fs_configuration_nh;
+#else
+    return desc_fs_configuration_nh;
+#endif
+  }
 }
 
 //--------------------------------------------------------------------+

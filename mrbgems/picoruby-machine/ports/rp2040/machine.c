@@ -138,6 +138,31 @@ canon_process_char(uint8_t raw)
 
 /*-------------------------------------
  *
+ * USB HID runtime flag
+ *
+ *------------------------------------*/
+
+volatile bool r2p2_usb_hid_enabled = true;
+
+static void usb_irq_handler(void); /* forward declaration */
+
+static void
+r2p2_usb_start(bool hid_enabled)
+{
+  r2p2_usb_hid_enabled = hid_enabled;
+  tud_init(TUD_OPT_RHPORT);
+  irq_add_shared_handler(USBCTRL_IRQ, usb_irq_handler,
+      PICO_SHARED_IRQ_HANDLER_LOWEST_ORDER_PRIORITY);
+}
+
+void
+Machine_usb_init(bool hid_enabled)
+{
+  r2p2_usb_start(hid_enabled);
+}
+
+/*-------------------------------------
+ *
  * HAL
  *
  *------------------------------------*/
@@ -204,6 +229,10 @@ mrb_hal_task_init(mrb_state *mrb)
 hal_init(void)
 #endif
 {
+  static bool hal_initialized = false;
+  if (hal_initialized) return;
+  hal_initialized = true;
+
 #if defined(PICORB_VM_MRUBY)
   mrb_ = (mrb_state *)mrb;
 #endif
@@ -237,10 +266,6 @@ hal_init(void)
 #else
   #error "Unsupported Board"
 #endif
-
-  tud_init(TUD_OPT_RHPORT);
-  irq_add_shared_handler(USBCTRL_IRQ, usb_irq_handler,
-      PICO_SHARED_IRQ_HANDLER_LOWEST_ORDER_PRIORITY);
 }
 
 #if defined(PICORB_VM_MRUBY)

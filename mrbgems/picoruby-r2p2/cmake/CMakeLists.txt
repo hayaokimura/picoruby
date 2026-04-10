@@ -111,7 +111,7 @@ add_custom_target(mrbdir ALL
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/mrb
 )
 
-set(RUBY_FILES main_task)
+set(RUBY_FILES boot_task main_task)
 add_dependencies(${PROJECT_NAME}
   mrbdir
   ${RUBY_FILES}

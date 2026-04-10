@@ -1,6 +1,10 @@
 module Machine
   $_signal_self_manage = false
 
+  def self.usb_init(hid: true)
+    _usb_init(hid)
+  end
+
   def self.posix?
     # Platform name is defined in picoruby-require
     !%w(RP2040 RP2350 ESP32).include?(RUBY_PLATFORM)
