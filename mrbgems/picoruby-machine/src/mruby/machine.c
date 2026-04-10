@@ -14,6 +14,15 @@ io_wait_for_input(mrb_state *mrb)
 }
 
 static mrb_value
+mrb_s__usb_init(mrb_state *mrb, mrb_value klass)
+{
+  mrb_bool hid_enabled;
+  mrb_get_args(mrb, "b", &hid_enabled);
+  Machine_usb_init((bool)hid_enabled);
+  return mrb_nil_value();
+}
+
+static mrb_value
 mrb_s_tud_task(mrb_state *mrb, mrb_value klass)
 {
   Machine_tud_task();
@@ -421,6 +430,7 @@ mrb_picoruby_machine_gem_init(mrb_state* mrb)
 
   struct RClass *module_Machine = mrb_define_module_id(mrb, MRB_SYM(Machine));
 
+  mrb_define_class_method(mrb, module_Machine, "_usb_init", mrb_s__usb_init, MRB_ARGS_REQ(1));
   mrb_define_class_method_id(mrb, module_Machine, MRB_SYM(tud_task), mrb_s_tud_task, MRB_ARGS_NONE());
   mrb_define_class_method_id(mrb, module_Machine, MRB_SYM_Q(tud_mounted), mrb_s_tud_mounted_p, MRB_ARGS_NONE());
 

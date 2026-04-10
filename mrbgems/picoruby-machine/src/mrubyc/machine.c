@@ -4,6 +4,18 @@
 
 
 static void
+c_Machine__usb_init(mrbc_vm *vm, mrbc_value *v, int argc)
+{
+  if (argc != 1) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "wrong number of arguments");
+    return;
+  }
+  bool hid_enabled = (v[1].tt == MRBC_TT_TRUE);
+  Machine_usb_init(hid_enabled);
+  SET_NIL_RETURN();
+}
+
+static void
 c_Machine_tud_task(mrbc_vm *vm, mrbc_value *v, int argc)
 {
   Machine_tud_task();
@@ -417,6 +429,7 @@ mrbc_machine_init(mrbc_vm *vm)
 {
   mrbc_class *module_Machine = mrbc_define_module(vm, "Machine");
 
+  mrbc_define_method(vm, module_Machine, "_usb_init", c_Machine__usb_init);
   mrbc_define_method(vm, module_Machine, "tud_task", c_Machine_tud_task);
   mrbc_define_method(vm, module_Machine, "tud_mounted?", c_Machine_tud_mounted_q);
 

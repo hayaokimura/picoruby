@@ -14,6 +14,7 @@
 #include "picoruby.h"
 #include "picoruby/debug.h"
 #include "hal.h" // in picoruby-machine
+#include "boot_task.c"
 #include "main_task.c"
 
 #if defined(PICORB_VM_MRUBY) && defined(PICORB_ALLOC_ESTALLOC)
@@ -150,6 +151,20 @@ main(void)
   mrb_alloc_set_critical_section(heap_enter_critical, heap_exit_critical);
 #endif
   global_mrb = mrb;
+  {
+    mrc_irep *boot_irep = mrb_read_irep(mrb, boot_task);
+    mrc_ccontext *boot_cc = mrc_ccontext_new(mrb);
+    mrb_value boot_name = mrb_str_new_lit(mrb, "boot_task");
+    mrb_value boot_task_val = mrc_create_task(boot_cc, boot_irep, boot_name, mrb_nil_value(), mrb_obj_value(mrb->top_self));
+    if (!mrb_nil_p(boot_task_val)) {
+      mrb_task_run(mrb);
+    }
+    if (mrb->exc) {
+      mrb_print_error(mrb);
+      mrb->exc = NULL;
+    }
+    mrc_ccontext_free(boot_cc);
+  }
   mrc_irep *irep = mrb_read_irep(mrb, main_task);
   mrc_ccontext *cc = mrc_ccontext_new(mrb);
   mrb_value name = mrb_str_new_lit(mrb, "R2P2");
@@ -169,6 +184,18 @@ main(void)
   mrb_close(mrb);
   mrc_ccontext_free(cc);
 #elif defined(PICORB_VM_MRUBYC)
+  mrbc_init(heap_pool, HEAP_SIZE);
+  mrbc_tcb *boot_tcb = mrbc_create_task(boot_task, 0);
+  if (!boot_tcb) {
+    const char *msg = "mrbc_create_task failed (boot_task)\n";
+    hal_write(1, msg, strlen(msg));
+    ret = 1;
+  }
+  else {
+    mrbc_set_task_name(boot_tcb, "boot_task");
+    picoruby_init_require(&boot_tcb->vm);
+    mrbc_run();
+  }
   mrbc_init(heap_pool, HEAP_SIZE);
   mrbc_tcb *main_tcb = mrbc_create_task(main_task, 0);
   if (!main_tcb) {
